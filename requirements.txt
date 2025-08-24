@@ -1,5 +1,3 @@
-python-telegram-bot[job-queue]==20.8
 espn-api==0.45.1
 python-dotenv==1.0.1
 requests==2.32.4
-schedule==1.2.2

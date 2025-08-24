@@ -281,13 +281,13 @@ Use `/help` for more information!
         logger.info("Starting Simple ESPN Fantasy Bot...")
         await application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-async def main():
+def main():
     """Main function"""
     try:
         bot = SimpleESPNBot()
-        await bot.run_bot()
+        asyncio.run(bot.run_bot())
     except Exception as e:
         logger.error(f"Bot failed to start: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
