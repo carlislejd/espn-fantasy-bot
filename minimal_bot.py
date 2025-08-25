@@ -134,6 +134,8 @@ Welcome! This bot provides updates for your ESPN fantasy league.
 • `/matchup Team Name` - Specific matchup details
 • `/myteam` - Show your team info
 • `/register Team Name` - Register your team
+• `/draft` - Draft countdown timer
+• `/cap` - Salary cap information
 • `/activity` - Show recent transactions
 • `/payout` - Show payout structure
 • `/help` - Show this help message
@@ -156,6 +158,8 @@ Use `/help` for more information!
 • `/matchup Team Name` - Get specific matchup details
 • `/myteam` - Show your team info (requires registration)
 • `/register Team Name` - Register your team for personalized commands
+• `/draft` - Show draft countdown timer
+• `/cap` - Show salary cap information
 • `/activity` - Show recent transactions & moves
 • `/payout` - Show payout structure
 • `/help` - Show this help message
@@ -332,6 +336,26 @@ Use `/help` for more information!
                 logger.error(f"Error registering team: {e}")
                 self.send_message("❌ Error registering team. Please try again later.")
                 
+        elif command == '/draft':
+            try:
+                draft_text = self.get_draft_countdown()
+                self.send_message(draft_text)
+            except Exception as e:
+                logger.error(f"Error getting draft info: {e}")
+                self.send_message("❌ Error retrieving draft information. Please try again later.")
+                
+        elif command == '/cap':
+            if not self.league:
+                self.send_message("❌ League not initialized. Check your configuration.")
+                return
+            
+            try:
+                cap_text = self.get_salary_cap_info()
+                self.send_message(cap_text)
+            except Exception as e:
+                logger.error(f"Error getting salary cap: {e}")
+                self.send_message("❌ Error retrieving salary cap information. Please try again later.")
+                
         elif command == '/teams':
             if not self.league:
                 self.send_message("❌ League not initialized. Check your configuration.")
@@ -343,6 +367,91 @@ Use `/help` for more information!
             except Exception as e:
                 logger.error(f"Error getting teams: {e}")
                 self.send_message("❌ Error retrieving teams. Please try again later.")
+    
+    def get_draft_countdown(self) -> str:
+        """Get draft countdown information"""
+        try:
+            # Draft date: Sunday, August 31, 2025 at 5:00 PM PST
+            draft_date = "2025-08-31 17:00:00"
+            draft_timezone = "US/Pacific"
+            
+            from datetime import datetime
+            import pytz
+            
+            # Parse draft date
+            pacific_tz = pytz.timezone(draft_timezone)
+            draft_datetime = pacific_tz.localize(datetime.strptime(draft_date, "%Y-%m-%d %H:%M:%S"))
+            
+            # Get current time in Pacific timezone
+            now = datetime.now(pacific_tz)
+            
+            # Calculate time difference
+            time_diff = draft_datetime - now
+            
+            if time_diff.total_seconds() <= 0:
+                return "🎯 *Draft Status*\n\n✅ **Draft has started!**\n\nGood luck to all teams!"
+            
+            # Calculate days, hours, minutes
+            days = time_diff.days
+            hours = time_diff.seconds // 3600
+            minutes = (time_diff.seconds % 3600) // 60
+            
+            draft_text = "🎯 *Draft Countdown*\n\n"
+            draft_text += f"📅 **Date:** Sunday, August 31, 2025\n"
+            draft_text += f"⏰ **Time:** 5:00 PM PST\n\n"
+            
+            if days > 0:
+                draft_text += f"⏳ **Time Remaining:** {days} days, {hours} hours, {minutes} minutes\n\n"
+            elif hours > 0:
+                draft_text += f"⏳ **Time Remaining:** {hours} hours, {minutes} minutes\n\n"
+            else:
+                draft_text += f"⏳ **Time Remaining:** {minutes} minutes\n\n"
+            
+            draft_text += "🏈 Get ready for the draft!\n"
+            draft_text += "📋 Make sure your draft board is ready\n"
+            draft_text += "💻 Test your draft software if needed"
+            
+            return draft_text
+            
+        except Exception as e:
+            logger.error(f"Error calculating draft countdown: {e}")
+            return "🎯 *Draft Information*\n\n📅 **Date:** Sunday, August 31, 2025\n⏰ **Time:** 5:00 PM PST"
+    
+    def get_salary_cap_info(self) -> str:
+        """Get salary cap information for all teams"""
+        if not self.league:
+            return "❌ League not initialized"
+        
+        try:
+            cap_text = "💰 *Salary Cap Status*\n\n"
+            
+            # Check if this is a salary cap league
+            if hasattr(self.league, 'settings') and hasattr(self.league.settings, 'salary_cap'):
+                total_cap = self.league.settings.salary_cap
+                cap_text += f"**Total Cap:** ${total_cap:,}\n\n"
+            else:
+                cap_text += "**Total Cap:** $200 (Standard)\n\n"
+            
+            cap_text += "*Team Cap Usage:*\n"
+            
+            for team in self.league.teams:
+                team_name = team.team_name
+                
+                # Try to get team's salary cap info
+                if hasattr(team, 'salary_cap_used'):
+                    cap_used = team.salary_cap_used
+                    cap_remaining = total_cap - cap_used if 'total_cap' in locals() else 200 - cap_used
+                    cap_text += f"• **{team_name}:** ${cap_used:,} used, ${cap_remaining:,} remaining\n"
+                else:
+                    cap_text += f"• **{team_name}:** Cap info not available\n"
+            
+            cap_text += "\n💡 *Note:* Salary cap information may not be available for all leagues."
+            
+            return cap_text
+            
+        except Exception as e:
+            logger.error(f"Error getting salary cap info: {e}")
+            return "❌ Error retrieving salary cap information."
     
     def get_current_scores(self) -> str:
         """Get current week scores"""
