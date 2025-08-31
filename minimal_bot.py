@@ -36,9 +36,15 @@ class MinimalESPNBot:
         self.espn_s2 = os.getenv('ESPN_S2')
         self.swid = os.getenv('ESPN_SWID')
         
-        # Team mappings - map Telegram usernames to team IDs
+        # Team mappings - map Telegram usernames/phone numbers to team IDs
         self.team_mappings = {
-            '@jcarlisle': 1  # We'll need to find the correct team ID
+            '@jcarlisle': 1,  # The Commish
+            '+17707145874': 4,
+            '+16363575742': 3,
+            '+19087972342': 5,
+            '+14806486544': 2,
+            '+16503023377': 7,
+            
         }
         
         self.league = None
@@ -287,11 +293,17 @@ Use `/help` for more information!
                 return
             
             try:
-                # Get username from message
+                # Get username or phone number from message
                 user = message.get('from', {})
                 username = user.get('username')
+                phone = user.get('phone_number')
+                
                 if username:
                     username = f"@{username}"
+                elif phone:
+                    username = f"+{phone}" if not phone.startswith('+') else phone
+                else:
+                    username = None
                 
                 myteam_text = self.get_my_team_info(username)
                 self.send_message(myteam_text)
@@ -323,15 +335,21 @@ Use `/help` for more information!
                                     "\n".join([f"• {team.team_name}" for team in self.league.teams]))
                     return
                 
-                # Get username from message
+                # Get username or phone number from message
                 user = message.get('from', {})
                 username = user.get('username')
+                phone = user.get('phone_number')
+                
                 if username:
                     username = f"@{username}"
                     self.team_mappings[username] = team_id
                     self.send_message(f"✅ Registered! @{username} is now mapped to '{team_name}' (ID: {team_id})")
+                elif phone:
+                    phone = f"+{phone}" if not phone.startswith('+') else phone
+                    self.team_mappings[phone] = team_id
+                    self.send_message(f"✅ Registered! {phone} is now mapped to '{team_name}' (ID: {team_id})")
                 else:
-                    self.send_message("❌ Could not get your username. Make sure you have a username set in Telegram.")
+                    self.send_message("❌ Could not get your username or phone number. Make sure you have a username set in Telegram or share your phone number.")
             except Exception as e:
                 logger.error(f"Error registering team: {e}")
                 self.send_message("❌ Error registering team. Please try again later.")
