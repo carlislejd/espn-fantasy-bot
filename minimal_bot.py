@@ -38,8 +38,8 @@ class MinimalESPNBot:
         
         # Team mappings - map Telegram usernames/phone numbers to team IDs
         self.team_mappings = {
-            '@jcarlisle': 4,  # The Commish
-            '+17707145874': 4,  # The Commish
+            '@jcarlisle': 1,  # The Commish
+            '+17707145874': 4,  
             '+16363575742': 3,
             '+19087972342': 5,
             '+14806486544': 2,
