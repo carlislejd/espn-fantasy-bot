@@ -766,6 +766,11 @@ Use `/help` for more information!
             home_team = matchup.home_team
             away_team = matchup.away_team
             
+            # Debug: log available attributes
+            logger.info(f"Matchup attributes: {[attr for attr in dir(matchup) if not attr.startswith('_')]}")
+            logger.info(f"Home team attributes: {[attr for attr in dir(home_team) if not attr.startswith('_')]}")
+            logger.info(f"Away team attributes: {[attr for attr in dir(away_team) if not attr.startswith('_')]}")
+            
             matchup_text = f"🏈 *Week {current_week} Matchup*\n\n"
             matchup_text += f"*{home_team.team_name}* vs *{away_team.team_name}*\n\n"
             
@@ -774,7 +779,7 @@ Use `/help` for more information!
             away_score = f"{away_team.score:.1f}" if hasattr(away_team, 'score') and away_team.score else "0.0"
             matchup_text += f"Score: {home_score} - {away_score}\n"
             
-            # Status
+            # Status - only show if available
             if hasattr(matchup, 'status') and matchup.status:
                 if matchup.status == "FINAL":
                     matchup_text += "✅ *Final*\n"
@@ -783,6 +788,7 @@ Use `/help` for more information!
                 else:
                     matchup_text += f"⏰ *{matchup.status}*\n"
             else:
+                # Default to scheduled since season hasn't started
                 matchup_text += "⏰ *Scheduled*\n"
             
             # Projected scores if available
