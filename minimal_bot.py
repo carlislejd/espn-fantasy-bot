@@ -358,6 +358,9 @@ Use `/help` for more information!
             try:
                 # Extract team name from command
                 team_name = command.replace('/register', '').strip()
+                logger.info(f"Register command - full command: '{command}'")
+                logger.info(f"Register command - extracted team_name: '{team_name}'")
+                
                 if not team_name:
                     self.send_message("❌ Please specify a team name: `/register Team Name`")
                     return
