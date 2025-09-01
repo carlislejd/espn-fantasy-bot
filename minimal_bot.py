@@ -770,8 +770,8 @@ Use `/help` for more information!
             matchup_text += f"*{home_team.team_name}* vs *{away_team.team_name}*\n\n"
             
             # Scores
-            home_score = f"{home_team.score:.1f}" if home_team.score else "0.0"
-            away_score = f"{away_team.score:.1f}" if away_team.score else "0.0"
+            home_score = f"{home_team.score:.1f}" if hasattr(home_team, 'score') and home_team.score else "0.0"
+            away_score = f"{away_team.score:.1f}" if hasattr(away_team, 'score') and away_team.score else "0.0"
             matchup_text += f"Score: {home_score} - {away_score}\n"
             
             # Status
