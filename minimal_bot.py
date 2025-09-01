@@ -38,13 +38,12 @@ class MinimalESPNBot:
         
         # Team mappings - map Telegram usernames/phone numbers to team IDs
         self.team_mappings = {
-            '@jcarlisle': 1,  # The Commish
-            '+17707145874': 4,
+            '@jcarlisle': 4,  # The Commish
+            '+17707145874': 4,  # The Commish
             '+16363575742': 3,
             '+19087972342': 5,
             '+14806486544': 2,
             '+16503023377': 7,
-            
         }
         
         self.league = None
@@ -279,12 +278,15 @@ Use `/help` for more information!
             try:
                 # Extract team name from command
                 team_name = command.replace('/matchup', '').strip()
+                logger.info(f"Matchup command - team_name: '{team_name}'")
                 
                 if not team_name:
                     # No team specified, get user's team
                     user = message.get('from', {})
                     username = user.get('username')
                     phone = user.get('phone_number')
+                    
+                    logger.info(f"Matchup command - user: {user}, username: {username}, phone: {phone}")
                     
                     if username:
                         username = f"@{username}"
@@ -293,12 +295,16 @@ Use `/help` for more information!
                     else:
                         username = None
                     
+                    logger.info(f"Matchup command - processed username: {username}")
+                    
                     if not username:
                         self.send_message("❌ You're not registered! Use `/register Team Name` first, or specify a team: `/matchup Team Name`")
                         return
                     
                     # Get user's team name
                     team_id = self.team_mappings.get(username)
+                    logger.info(f"Matchup command - team_id from mappings: {team_id}")
+                    
                     if not team_id:
                         self.send_message("❌ You're not registered! Use `/register Team Name` first, or specify a team: `/matchup Team Name`")
                         return
@@ -311,6 +317,8 @@ Use `/help` for more information!
                     else:
                         self.send_message("❌ Could not find your team. Please try `/register Team Name` again.")
                         return
+                    
+                    logger.info(f"Matchup command - found team_name: {team_name}")
                 
                 matchup_text = self.get_matchup_vs_team(team_name)
                 self.send_message(matchup_text)
@@ -428,6 +436,27 @@ Use `/help` for more information!
             except Exception as e:
                 logger.error(f"Error in debug: {e}")
                 self.send_message("❌ Error in debug. Please try again later.")
+                
+        elif command == '/teams_debug':
+            if not self.league:
+                self.send_message("❌ League not initialized. Check your configuration.")
+                return
+            
+            try:
+                debug_text = "🔍 *Team ID Debug Info*\n\n"
+                debug_text += "*All Teams:*\n"
+                
+                for team in self.league.teams:
+                    debug_text += f"• **{team.team_name}** (ID: {team.team_id})\n"
+                
+                debug_text += "\n*Current Mappings:*\n"
+                for username, team_id in self.team_mappings.items():
+                    debug_text += f"• {username} → Team ID {team_id}\n"
+                
+                self.send_message(debug_text)
+            except Exception as e:
+                logger.error(f"Error in teams debug: {e}")
+                self.send_message("❌ Error in teams debug. Please try again later.")
                 
         elif command == '/teams':
             if not self.league:
