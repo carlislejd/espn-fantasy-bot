@@ -775,10 +775,13 @@ Use `/help` for more information!
             matchup_text += f"Score: {home_score} - {away_score}\n"
             
             # Status
-            if matchup.status == "FINAL":
-                matchup_text += "✅ *Final*\n"
-            elif matchup.status == "IN_PROGRESS":
-                matchup_text += "🔄 *Live*\n"
+            if hasattr(matchup, 'status') and matchup.status:
+                if matchup.status == "FINAL":
+                    matchup_text += "✅ *Final*\n"
+                elif matchup.status == "IN_PROGRESS":
+                    matchup_text += "🔄 *Live*\n"
+                else:
+                    matchup_text += f"⏰ *{matchup.status}*\n"
             else:
                 matchup_text += "⏰ *Scheduled*\n"
             
