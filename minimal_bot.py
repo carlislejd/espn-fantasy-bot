@@ -374,6 +374,30 @@ Use `/help` for more information!
                 logger.error(f"Error getting salary cap: {e}")
                 self.send_message("❌ Error retrieving salary cap information. Please try again later.")
                 
+        elif command == '/debug':
+            if not self.league:
+                self.send_message("❌ League not initialized. Check your configuration.")
+                return
+            
+            try:
+                # Get username or phone number from message
+                user = message.get('from', {})
+                username = user.get('username')
+                phone = user.get('phone_number')
+                
+                if username:
+                    username = f"@{username}"
+                elif phone:
+                    username = f"+{phone}" if not phone.startswith('+') else phone
+                else:
+                    username = None
+                
+                debug_text = self.debug_player_attributes(username)
+                self.send_message(debug_text)
+            except Exception as e:
+                logger.error(f"Error in debug: {e}")
+                self.send_message("❌ Error in debug. Please try again later.")
+                
         elif command == '/teams':
             if not self.league:
                 self.send_message("❌ League not initialized. Check your configuration.")
@@ -565,18 +589,43 @@ Use `/help` for more information!
             for team in self.league.teams:
                 starters_text += f"*{team.team_name}*\n"
                 
-                # Get starters for this team
-                starters = team.starters
-                if starters:
-                    for player in starters:
+                # Check if starters attribute exists
+                if hasattr(team, 'starters') and team.starters:
+                    for player in team.starters:
                         position = player.position
                         name = player.name
-                        projected = f"{player.projected_points:.1f}" if hasattr(player, 'projected_points') and player.projected_points else "N/A"
+                        
+                        # Try multiple possible projected points attributes
+                        projected = "N/A"
+                        if hasattr(player, 'projected_points') and player.projected_points:
+                            projected = f"{player.projected_points:.1f}"
+                        elif hasattr(player, 'projected') and player.projected:
+                            projected = f"{player.projected:.1f}"
+                        elif hasattr(player, 'proj_points') and player.proj_points:
+                            projected = f"{player.proj_points:.1f}"
+                        
                         actual = f"{player.points:.1f}" if hasattr(player, 'points') and player.points else "0.0"
                         
                         starters_text += f"  {position}: {name} ({projected} proj, {actual} pts)\n"
                 else:
-                    starters_text += "  No starters set\n"
+                    # Fallback to roster if starters not available
+                    starters_text += "  *Roster:*\n"
+                    for player in team.roster:
+                        position = player.position
+                        name = player.name
+                        
+                        # Try multiple possible projected points attributes
+                        projected = "N/A"
+                        if hasattr(player, 'projected_points') and player.projected_points:
+                            projected = f"{player.projected_points:.1f}"
+                        elif hasattr(player, 'projected') and player.projected:
+                            projected = f"{player.projected:.1f}"
+                        elif hasattr(player, 'proj_points') and player.proj_points:
+                            projected = f"{player.proj_points:.1f}"
+                        
+                        actual = f"{player.points:.1f}" if hasattr(player, 'points') and player.points else "0.0"
+                        
+                        starters_text += f"  {position}: {name} ({projected} proj, {actual} pts)\n"
                 
                 starters_text += "\n"
             
@@ -685,6 +734,49 @@ Use `/help` for more information!
             logger.error(f"Error getting matchup: {e}")
             return "❌ Error retrieving matchup"
     
+    def debug_player_attributes(self, username: str) -> str:
+        """Debug method to see what attributes are available on player objects"""
+        if not self.league:
+            return "❌ League not initialized"
+        
+        try:
+            # Find the team for this user
+            team_id = self.team_mappings.get(username)
+            if not team_id:
+                return f"❌ You're not registered! Use `/register Team Name` to register your team."
+            
+            # Find the team in the league by ID
+            user_team = None
+            for team in self.league.teams:
+                if team.team_id == team_id:
+                    user_team = team
+                    break
+            
+            if not user_team:
+                return f"❌ Team ID {team_id} not found in league."
+            
+            debug_text = f"🔍 *Debug: {user_team.team_name} Player Attributes*\n\n"
+            
+            # Check first few players
+            for i, player in enumerate(user_team.roster[:3]):
+                debug_text += f"**Player {i+1}: {player.name}**\n"
+                debug_text += f"Available attributes: {[attr for attr in dir(player) if not attr.startswith('_')]}\n"
+                
+                # Check specific projection attributes
+                for attr in ['projected_points', 'projected', 'proj_points', 'points']:
+                    if hasattr(player, attr):
+                        value = getattr(player, attr)
+                        debug_text += f"{attr}: {value}\n"
+                    else:
+                        debug_text += f"{attr}: Not available\n"
+                debug_text += "\n"
+            
+            return debug_text
+            
+        except Exception as e:
+            logger.error(f"Error in debug: {e}")
+            return f"❌ Error in debug: {e}"
+
     def get_my_team_info(self, username: str) -> str:
         """Get information for a specific user's team"""
         if not self.league:
@@ -719,13 +811,35 @@ Use `/help` for more information!
             team_text += f"Points For: {user_team.points_for:.1f}\n"
             team_text += f"Points Against: {user_team.points_against:.1f}\n\n"
             
+            # Try to get projected points from current week matchup
+            projected_team_score = None
+            try:
+                for game in self.league.scoreboard():
+                    if (game.home_team.team_id == team_id or game.away_team.team_id == team_id):
+                        if game.home_team.team_id == team_id:
+                            projected_team_score = game.home_team.projected_points if hasattr(game.home_team, 'projected_points') else None
+                        else:
+                            projected_team_score = game.away_team.projected_points if hasattr(game.away_team, 'projected_points') else None
+                        break
+            except:
+                pass
+            
             # Current week starters - check if starters attribute exists
             team_text += "*This Week's Starters:*\n"
             if hasattr(user_team, 'starters') and user_team.starters:
                 for player in user_team.starters:
                     position = player.position
                     name = player.name
-                    projected = f"{player.projected_points:.1f}" if hasattr(player, 'projected_points') and player.projected_points else "N/A"
+                    
+                    # Try multiple possible projected points attributes
+                    projected = "N/A"
+                    if hasattr(player, 'projected_points') and player.projected_points:
+                        projected = f"{player.projected_points:.1f}"
+                    elif hasattr(player, 'projected') and player.projected:
+                        projected = f"{player.projected:.1f}"
+                    elif hasattr(player, 'proj_points') and player.proj_points:
+                        projected = f"{player.proj_points:.1f}"
+                    
                     actual = f"{player.points:.1f}" if hasattr(player, 'points') and player.points else "0.0"
                     
                     team_text += f"  {position}: {name} ({projected} proj, {actual} pts)\n"
@@ -735,19 +849,31 @@ Use `/help` for more information!
                 for player in user_team.roster:
                     position = player.position
                     name = player.name
-                    projected = f"{player.projected_points:.1f}" if hasattr(player, 'projected_points') and player.projected_points else "N/A"
+                    
+                    # Try multiple possible projected points attributes
+                    projected = "N/A"
+                    if hasattr(player, 'projected_points') and player.projected_points:
+                        projected = f"{player.projected_points:.1f}"
+                    elif hasattr(player, 'projected') and player.projected:
+                        projected = f"{player.projected:.1f}"
+                    elif hasattr(player, 'proj_points') and player.proj_points:
+                        projected = f"{player.proj_points:.1f}"
+                    
                     actual = f"{player.points:.1f}" if hasattr(player, 'points') and player.points else "0.0"
                     
                     team_text += f"  {position}: {name} ({projected} proj, {actual} pts)\n"
             
             team_text += "\n"
             
-            # Current week score
+            # Current week score and projected
             if hasattr(user_team, 'score') and user_team.score:
                 current_score = f"{user_team.score:.1f}"
                 team_text += f"*Current Week Score: {current_score}*"
             else:
                 team_text += "*Current Week Score: Not available*"
+            
+            if projected_team_score:
+                team_text += f"\n*Projected Week Score: {projected_team_score:.1f}*"
             
             return team_text
             
