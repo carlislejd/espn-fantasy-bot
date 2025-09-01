@@ -122,7 +122,11 @@ class MinimalESPNBot:
         if not text.startswith('/'):
             return
         
+        # Get the base command (first word)
         command = text.lower().split()[0]
+        
+        # For commands that need parameters, use the full text
+        full_text = text
         
         if command == '/start':
             welcome_text = """
@@ -276,8 +280,8 @@ Use `/help` for more information!
                 return
             
             try:
-                # Extract team name from command
-                team_name = command.replace('/matchup', '').strip()
+                # Extract team name from full text
+                team_name = full_text.replace('/matchup', '').strip()
                 logger.info(f"Matchup command - team_name: '{team_name}'")
                 
                 if not team_name:
@@ -356,9 +360,9 @@ Use `/help` for more information!
                 return
             
             try:
-                # Extract team name from command
-                team_name = command.replace('/register', '').strip()
-                logger.info(f"Register command - full command: '{command}'")
+                # Extract team name from full text
+                team_name = full_text.replace('/register', '').strip()
+                logger.info(f"Register command - full text: '{full_text}'")
                 logger.info(f"Register command - extracted team_name: '{team_name}'")
                 
                 if not team_name:
