@@ -137,6 +137,7 @@ Welcome! This bot provides updates for your ESPN fantasy league.
 • `/teams` - List all teams
 • `/starters` - Show all team starters
 • `/rank` - Top performing players
+• `/matchup` - Show your matchup (requires registration)
 • `/matchup Team Name` - Specific matchup details
 • `/myteam` - Show your team info
 • `/register Team Name` - Register your team
@@ -161,6 +162,7 @@ Use `/help` for more information!
 • `/teams` - List all teams with records
 • `/starters` - Show all team starters for current week
 • `/rank` - Show top performing players this week
+• `/matchup` - Show your matchup (requires registration)
 • `/matchup Team Name` - Get specific matchup details
 • `/myteam` - Show your team info (requires registration)
 • `/register Team Name` - Register your team for personalized commands
@@ -277,9 +279,38 @@ Use `/help` for more information!
             try:
                 # Extract team name from command
                 team_name = command.replace('/matchup', '').strip()
+                
                 if not team_name:
-                    self.send_message("❌ Please specify a team name: `/matchup Team Name`")
-                    return
+                    # No team specified, get user's team
+                    user = message.get('from', {})
+                    username = user.get('username')
+                    phone = user.get('phone_number')
+                    
+                    if username:
+                        username = f"@{username}"
+                    elif phone:
+                        username = f"+{phone}" if not phone.startswith('+') else phone
+                    else:
+                        username = None
+                    
+                    if not username:
+                        self.send_message("❌ You're not registered! Use `/register Team Name` first, or specify a team: `/matchup Team Name`")
+                        return
+                    
+                    # Get user's team name
+                    team_id = self.team_mappings.get(username)
+                    if not team_id:
+                        self.send_message("❌ You're not registered! Use `/register Team Name` first, or specify a team: `/matchup Team Name`")
+                        return
+                    
+                    # Find team name from team ID
+                    for team in self.league.teams:
+                        if team.team_id == team_id:
+                            team_name = team.team_name
+                            break
+                    else:
+                        self.send_message("❌ Could not find your team. Please try `/register Team Name` again.")
+                        return
                 
                 matchup_text = self.get_matchup_vs_team(team_name)
                 self.send_message(matchup_text)
